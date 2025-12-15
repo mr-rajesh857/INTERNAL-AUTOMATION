@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Document Verification Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style2.css') }}">
+
+    <style>
+        /* ===== EMAIL MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: #fff;
+            width: 420px;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+            animation: fadeInScale .3s ease;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            font-size: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+
+        .modal label {
+            font-weight: 600;
+        }
+
+        .modal input,
+        .modal textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 6px 0 14px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        .modal textarea {
+            height: 80px;
+            resize: vertical;
+        }
+
+        .modal .btn-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn {
+            background: #007bff;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn.cancel {
+            background: #888;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="wrap">
+        <h1>Document Verification (Drag & Drop)</h1>
+
+        <!-- ========== STEP 1: UPLOAD EXCEL ========== -->
+        <section class="card">
+            <h2>1) Upload Excel</h2>
+            <input type="file" id="excelInput" accept=".xlsx">
+            <button id="uploadBtn">Upload & Detect Columns</button>
+            <p id="uploadMsg" class="muted"></p>
+        </section>
+
+        <!-- ========== STEP 2: SELECT VERIFY/MERGE COLUMNS ========== -->
+        <section class="card" id="chooseSection" style="display:none;">
+            <h2>2) Detected document columns (after 'Folder Link'):</h2>
+            <div id="columnsContainer"></div>
+
+            <h3>Select documents to VERIFY (choose one or more)</h3>
+            <div id="verifyList" class="cols"></div>
+
+            <h3>Arrange MERGE sequence (drag to reorder)</h3>
+            <ul id="mergeList" class="drag-list"></ul>
+
+            <div style="margin-top:12px;">
+                <label><input type="checkbox" id="useEasyOCR"> Use EasyOCR (if installed)</label>
+            </div>
+        </section>
+
+        <!-- ========== STEP 3: EMAIL SECTION ========== -->
+        <section class="card" id="emailSection" style="display:none;">
+            <h3>Email Settings</h3>
+            <div class="email-box">
+
+                <label>Verification Log - To Email:</label>
+                <input type="email" id="ver_to" placeholder="Enter recipient email">
+
+                <label>Verification Log - CC (optional):</label>
+                <input type="email" id="ver_cc" placeholder="Enter CC">
+
+                <label>Verification Log - Subject:</label>
+                <input type="text" id="ver_subject" placeholder="Verification Log Report">
+
+                <br><br>
+
+                <!-- Merge email fields are collected later in a modal popup -->
+            </div>
+
+            <button id="startBtn">Start Processing</button>
+        </section>
+
+        <!-- ========== STEP 4: LOGS SECTION ========== -->
+        <section class="card" id="logsSection" style="display:none;">
+            <h2>Processing Logs</h2>
+            <div id="logs"
+                style="white-space:pre-wrap; max-height:400px; overflow:auto; padding:10px; border-radius:6px; background:#fafafa;">
+            </div>
+
+            <h3>Summary</h3>
+            <pre id="summary"></pre>
+
+            <a id="downloadMerged" href="#" style="display:none;">Open merged folder</a>
+        </section>
+    </div>
+
+    <!-- ===== Merge Email Modal (popup used after merge completes) ===== -->
+    <div id="mergeEmailModal" class="modal-overlay" role="dialog" aria-hidden="true">
+        <div class="modal" role="document">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2>Send Merge Log</h2>
+                <button id="mergeModalClose" title="Close" style="background:none;border:none;font-size:18px;cursor:pointer;">✕</button>
+            </div>
+
+            <label>Merge Log - To Email (required):</label>
+            <input type="email" id="merge_to" placeholder="Enter recipient email">
+
+            <label>Merge Log - CC (optional):</label>
+            <input type="email" id="merge_cc" placeholder="Enter CC">
+
+            <label>Merge Log - Subject (optional):</label>
+            <input type="text" id="merge_subject" placeholder="Merge Log Report">
+
+            <div style="margin-top:8px; font-size:13px; color:#555;">
+                <em>If subject is left empty a default will be used.</em>
+            </div>
+
+            <div class="btn-row" style="margin-top:14px;">
+                <button id="cancelMergeEmail" class="btn cancel">Cancel</button>
+                <button id="sendMergeEmail" class="btn">Send Merge Email</button>
+            </div>
+
+            <p id="mergeEmailStatus" style="margin-top:10px;color:#333;"></p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+
+</html>

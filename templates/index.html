@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Drive Case Document Search</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+  <div class="container">
+    <h1>Document Checklist Automation</h1>
+
+    <!-- Step 1 -->
+    <section id="section1">
+      <h2>Step 1: Provide Folder Link</h2>
+      <input type="text" id="folder_link" placeholder="Enter Google Drive Folder Link">
+
+      <h2>Step 2: Upload Excel OR provide Google Sheet link</h2>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <input type="file" id="excel_file" accept=".xlsx">
+        <input type="text" id="gsheet_link" placeholder="Or paste Google Sheet link (optional)" style="flex:1;">
+        <button onclick="uploadSheetOrExcel()">Upload / Load</button>
+      </div>
+
+      <p style="font-size: 0.9rem; color:#bdbdbd; margin-top:6px;">Either upload an .xlsx or paste a Google Sheet link.
+        The app will read headers from whichever you provide.</p>
+    </section>
+
+    <!-- Step 2 -->
+    <section id="section2" style="display:none;">
+      <h2>Step 3: Select Borrower Column & Start Scan</h2>
+      <select id="borrower_col"></select>
+      <button onclick="startFolderScan()">Start Folder Scan</button>
+      <div id="folder_structure" style="margin-top:12px;"></div>
+
+      <h3 style="margin-top:20px;">Live Scan Results</h3>
+      <div id="scan_results"></div>
+    </section>
+
+    <!-- Step 3 -->
+    <section id="section3" style="display:none;">
+      <h2>Step 4: Select Case Type</h2>
+
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="case_type">
+          <option value="">-- Select --</option>
+          {% for c in CASE_TYPES.keys() %}
+          <option value="{{ c }}">{{ c }}</option>
+          {% endfor %}
+        </select>
+
+        <button id="add_case_type_btn" onclick="promptAddCaseType()">+ Add Case Type</button>
+        <button id="edit_case_type_btn" onclick="promptEditCaseType()" style="background:#f0ad4e;">Edit Case
+          Type</button>
+      </div>
+
+      <div id="case_docs_area" style="margin-top:16px; display:none;">
+        <h3>Documents for selected case type</h3>
+        <div id="docs_list"></div>
+        <div style="margin-top:10px;">
+          <button onclick="openAddDocumentModal()">+ Add Document</button>
+        </div>
+      </div>
+
+      <table id="doc_table" style="display:none;">
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Document</th>
+            <th>Pattern</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Step 4 -->
+    <section id="section4" style="display:none;">
+      <h2>Step 5: Run Matching</h2>
+      <div id="emailModal" class="modal" style="display:none;">
+        <div class="modal-content">
+          <h3>Send Report via Email</h3>
+          <input type="text" id="email_input" placeholder="To: recipient1@example.com, recipient2@example.com">
+          <input type="text" id="cc_input" placeholder="CC: cc1@example.com, cc2@example.com (optional)">
+          <input type="text" id="subject_input" placeholder="Subject (optional)">
+          <textarea id="message_input" placeholder="Message (optional)" rows="5"
+            style="width: 95%; padding:8px; border-radius:6px; border:none;"></textarea>
+          <div style="margin-top:10px;">
+            <button id="startProcessBtn" onclick="startProcessAfterEmail()">Start Process</button>
+            <button onclick="closeEmailModal()" style="background:#888; margin-left:8px;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="runBtn" onclick="openEmailModalBeforeRun()">Run</button>
+      <div class="progress">
+        <div class="bar" id="progress_bar"></div>
+      </div>
+    </section>
+
+    <!-- OCR BUTTON -->
+    <div style="margin-top:20px; text-align:center;">
+      <button onclick="window.location.href='/tool'" id="ocr_btn" style="display:none;">
+        Go for OCR SCAN
+      </button>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+
+  <script>
+    let GENERATED_REPORT_FILENAME = "";
+  </script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,132 @@
+/* style.css */
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f3f4f6; margin:0; padding:30px; }
+.wrap { max-width:1100px; margin:0 auto; }
+h1 { margin-bottom:10px; }
+.card { background:white; padding:18px; margin-bottom:18px; border-radius:8px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+.muted { color:#555; margin-top:8px; }
+.cols { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.cols .chip { background:#eef2ff; padding:8px 10px; border-radius:6px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+.drag-list { list-style:none; padding:0; margin:0; }
+.drag-list li { background:#fff7ed; padding:10px 12px; margin:8px 0; border-radius:6px; cursor:grab; border:1px solid #f1e5d6; }
+.drag-over { border: 2px dashed #777; }
+button { background:#0b5cff; color:white; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; }
+button:disabled { opacity:0.5; cursor:default; }
+#logs { font-family: monospace; font-size:13px; color:#111 }
+.modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: #fff;
+            width: 420px;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+            animation: fadeInScale .3s ease;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            font-size: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+
+        .modal label {
+            font-weight: 600;
+        }
+
+        .modal input,
+        .modal textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 6px 0 14px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        .modal textarea {
+            height: 80px;
+            resize: vertical;
+        }
+
+        .modal .btn-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn {
+            background: #007bff;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn.cancel {
+            background: #888;
+        }
+.email-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.email-block {
+    background: #f9fafb;
+    padding: 15px 18px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.email-block h4 {
+    margin: 0 0 12px;
+    color: #333;
+}
+
+.email-block label {
+    display: block;
+    font-size: 14px;
+    margin-top: 10px;
+    margin-bottom: 4px;
+    color: #444;
+}
+
+.email-block input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+    transition: 0.15s;
+}
+
+.email-block input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
