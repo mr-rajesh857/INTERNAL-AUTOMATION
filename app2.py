@@ -27,6 +27,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.auth.transport.requests import Request
+from playwright.sync_api import sync_playwright
 # Google Drive API libs (optional)
 try:
     from google.oauth2 import service_account
@@ -87,8 +88,39 @@ EASYOCR_MODEL_LANGS = ["en"]
 EASYOCR_GPU_IF_AVAILABLE = True
 DEFAULT_DPI = 180
 EARLY_EXIT_KEYWORDS = ["loan", "loan id", "loan_id", "loanid", "mobile", "phone", "aadhaar", "pan", "id", "name"]
-
+PLAYWRIGHT_LOCK = threading.Lock()
 # ----------- Helpers -----------
+def download_pdf_via_playwright(url, timeout=30000):
+    try:
+        with PLAYWRIGHT_LOCK:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(accept_downloads=True)
+                page = context.new_page()
+
+                pdf_bytes = None
+
+                def handle_response(response):
+                    nonlocal pdf_bytes
+                    try:
+                        ct = response.headers.get("content-type", "")
+                        if "application/pdf" in ct.lower():
+                            pdf_bytes = response.body()
+                    except Exception:
+                        pass
+
+                page.on("response", handle_response)
+
+                page.goto(url, timeout=timeout, wait_until="networkidle")
+                page.wait_for_timeout(5000)
+
+                browser.close()
+                return pdf_bytes
+
+    except Exception as e:
+        print("Playwright PDF download failed:", e)
+        return None
+
 def extract_drive_id(link):
     if not isinstance(link, str):
         return None
@@ -117,7 +149,35 @@ def download_drive_file(file_id, session=None, timeout=30):
     except Exception as e:
         print("Drive download error:", e)
         return None
+def is_html_bytes(b):
+    if not b:
+        return False
+    head = b[:200].lower()
+    return b"<html" in head or b"<!doctype html" in head
+# ----------------------------
+# Generic (non-Drive) downloader
+# ----------------------------
+def download_generic_file(url, session=None, timeout=30):
+    """
+    Download PDFs/images from any public clickable URL
+    (e.g., https://s.legodesk.com/xxxx)
+    """
+    try:
+        s = session or requests.Session()
+        resp = s.get(url, stream=True, timeout=timeout, allow_redirects=True)
+        if resp.status_code == 200:
+            return resp.content
+        else:
+            print(f"Generic download failed [{resp.status_code}]: {url}")
+            return None
+    except Exception as e:
+        print("Generic download error:", e)
+        return None
 
+
+# ----------------------------
+# Unified downloader (Drive + Any URL)
+# ----------------------------
 def cached_download_drive_file(file_id, session=None, timeout=30):
     if not file_id:
         return None
@@ -129,6 +189,33 @@ def cached_download_drive_file(file_id, session=None, timeout=30):
         with FILE_CACHE_LOCK:
             FILE_CACHE[file_id] = data
     return data
+def download_file_from_link(link):
+    if not link or not isinstance(link, str):
+        return None
+
+    # 1️⃣ Google Drive
+    file_id = extract_drive_id(link)
+    if file_id:
+        return cached_download_drive_file(file_id, session=session)
+
+    # 2️⃣ Try normal HTTP download
+    raw = download_generic_file(link, session=session)
+    if raw:
+        # PDF or Image → OK
+        if is_pdf_bytes(raw):
+            return raw
+
+        # HTML detected → JS-protected
+        head = raw[:200].lower()
+        if b"<html" not in head:
+            return raw
+
+    # 3️⃣ Playwright fallback (Legodesk etc.)
+    print("⚙ Using Playwright for:", link)
+    return download_pdf_via_playwright(link)
+
+
+
 
 def is_pdf_bytes(b: bytes):
     return isinstance(b, (bytes, bytearray)) and b[:4] == b"%PDF"
@@ -892,19 +979,12 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
             continue
 
         # Pre-warm downloads
-        doc_ids = {col: extract_drive_id(links[col]) for col in doc_columns}
         with ThreadPoolExecutor(max_workers=DOWNLOAD_THREADS) as dl_exec:
-            future_to_col = {}
-            for col, fid in doc_ids.items():
-                if not fid:
-                    continue
-                with FILE_CACHE_LOCK:
-                    already = fid in FILE_CACHE
-                if already:
-                    continue
-                future_to_col[dl_exec.submit(cached_download_drive_file, fid, requests.Session())] = col
-            for f in as_completed(future_to_col):
-                col = future_to_col[f]
+            futures = []
+            for col in doc_columns:
+                link = links[col]
+                futures.append(dl_exec.submit(download_file_from_link, link))
+            for f in as_completed(futures):
                 try:
                     _ = f.result()
                 except Exception:
@@ -913,34 +993,41 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
         # Verification (parallel)
         ver_all_pass = True
         per_row_ver_results = {}
-        with ThreadPoolExecutor(max_workers=VERIFY_THREADS) as ex:
-            futs = {}
-            for doc_col in ver_docs:
-                link = links.get(doc_col)
-                futs[ex.submit(process_single_verification, row, doc_col, link, USE_EASYOCR)] = doc_col
-            for fut in as_completed(futs):
-                try:
-                    log_row, passed = fut.result()
-                except Exception as e:
-                    log_row = {
-                        "Loan ID": loan_id,
-                        "Name": name,
-                        "Document": doc_col,
-                        "Method Used": "",
-                        "Verification Result": "Failed",
-                        "Reason": f"Exception during verification: {e}",
-                        "Time Taken (s)": 0,
-                        "File Type": "",
-                        "Confidence": -1.0,
-                        "Notes": ""
-                    }
-                    passed = False
-                verification_log_rows.append(log_row)
-                doc_col = futs[fut]
-                per_row_ver_results[doc_col] = passed
-                textual_print_log.append(f"  • {doc_col} => {log_row.get('Verification Result')} ({log_row.get('Method Used')}) [{log_row.get('File Type')}] conf={log_row.get('Confidence')}")
-                if not passed:
-                    ver_all_pass = False
+
+        # 🔒 Sequential verification (Playwright-safe)
+        for doc_col in ver_docs:
+            link = links.get(doc_col)
+
+            try:
+                log_row, passed = process_single_verification(
+                    row, doc_col, link, USE_EASYOCR
+                )
+            except Exception as e:
+                log_row = {
+                    "Loan ID": loan_id,
+                    "Name": name,
+                    "Document": doc_col,
+                    "Method Used": "",
+                    "Verification Result": "Failed",
+                    "Reason": f"Exception during verification: {e}",
+                    "Time Taken (s)": 0,
+                    "File Type": "",
+                    "Confidence": -1.0,
+                    "Notes": ""
+                }
+                passed = False
+
+            verification_log_rows.append(log_row)
+            per_row_ver_results[doc_col] = passed
+
+            textual_print_log.append(
+                f"  • {doc_col} => {log_row.get('Verification Result')} "
+                f"({log_row.get('Method Used')}) "
+                f"[{log_row.get('File Type')}] conf={log_row.get('Confidence')}"
+            )
+
+            if not passed:
+                ver_all_pass = False
 
         if not ver_all_pass:
             rows_failed_verification += 1
@@ -949,7 +1036,7 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
                 "Loan ID": loan_id,
                 "Name": name,
                 "Merged": "NO",
-                "Documents Included": ", ".join(doc_columns),
+                "Documents Included": ", ".join(included_docs),
                 "Output Path": "",
                 "Drive Link": "",
                 "Reason": "Verification failed for one or more selected documents",
@@ -965,23 +1052,18 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
         merge_success = True
         for doc_col in merge_seq_docs:
             link = links.get(doc_col)
-            file_id = extract_drive_id(link)
-            if not file_id:
-                textual_print_log.append(f"   ⚠ Missing drive id for {doc_col} — cannot merge.")
+            raw = download_file_from_link(link)
+            if not raw:
+                textual_print_log.append(f"   ⚠ Could not download {doc_col}")
                 merge_success = False
                 break
-            with FILE_CACHE_LOCK:
-                raw = FILE_CACHE.get(file_id)
-            if not raw:
-                raw = cached_download_drive_file(file_id, requests.Session())
-                if not raw:
-                    textual_print_log.append(f"   ⚠ Could not download {doc_col} — cannot merge.")
-                    merge_success = False
-                    break
+ 
             try:
                 if is_pdf_bytes(raw):
                     merger.append(BytesIO(raw))
+
                 else:
+                    # assume image
                     img = Image.open(BytesIO(raw)).convert("RGB")
                     out = BytesIO()
                     img.save(out, format="PDF")
