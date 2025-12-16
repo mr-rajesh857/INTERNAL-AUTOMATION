@@ -1,0 +1,301 @@
+{
+    "Suits Filed U/s 25 PSS Act": {
+        "Certificate of Incorporation of the lender's company": [
+            "certificate",
+            "incorporation",
+            "company",
+            "certificate_incorporation_company"
+        ],
+        "Power of Attorney authorizing Legopedia Solicitors & Attorneys LLP": [
+            "power",
+            "attorney",
+            "legopedia",
+            "power_attorney_legopedia"
+        ],
+        "Loan Agreement reflecting borrower's bank details": [
+            "loan",
+            "agreement",
+            "loan_agreement"
+        ],
+        "Copies of the ECS/NACH/E-Mandate form": [
+            "ecs",
+            "nach",
+            "e-mandate",
+            "ecs_nach_mandate"
+        ],
+        "NACH/ECS/E-Mandate Transaction Return Memo": [
+            "return",
+            "memo",
+            "nach",
+            "ecs",
+            "E-Mandate",
+            "return_memo_nach_ecs"
+        ],
+        "Updated bank passbook or latest statement showing NACH transaction attempts": [
+            "bank",
+            "passbook",
+            "statement",
+            "bank_passbook_statement"
+        ],
+        "Copy of legal notice served to the borrower, with postal receipt": [
+            "legal",
+            "notice",
+            "postal",
+            "receipt",
+            "legal_notice_postal_receipt"
+        ]
+    },
+    "Suits Filed U/s 138 NI Act": {
+        "Certificate of Incorporation of the lender's company": [
+            "certificate",
+            "incorporation",
+            "certificate_incorporation"
+        ],
+        "Power of Attorney authorizing Legopedia Solicitors & Attorneys LLP": [
+            "power",
+            "attorney",
+            "legopedia",
+            "power_attorney_legopedia"
+        ],
+        "Copies of the dishonoured cheque(s)": [
+            "cheque",
+            "dishonour",
+            "dishonored",
+            "dishonored_cheques"
+        ],
+        "NACH/ECS/E-Mandate Transaction Return Memo (if applicable)": [
+            "nach",
+            "ecs",
+            "memo",
+            "return",
+            "return_memo_nach_ecs"
+        ],
+        "Updated bank passbook or latest account statement": [
+            "bank",
+            "statement",
+            "passbook",
+            "bank_statement_passbook",
+            "bank_passbook"
+        ],
+        "Legal notice sent to the borrower, with postal receipt (if any)": [
+            "legal",
+            "notice",
+            "postal",
+            "receipt",
+            "legal_notice_postal_receipt"
+        ],
+        "Details of original dishonoured cheques or endorsement copies": [
+            "Detail_cheque",
+            "Detail_check_endorsement",
+            "Detail_check_endorsement_dishonour"
+        ]
+    },
+    "Arbitration Proceedings": {
+        "Loan Agreement": [
+            "loan",
+            "agreement",
+            "loan_agreement"
+        ],
+        "Power of Attorney authorising Legopedia Solicitors & Attorneys LLP": [
+            "power",
+            "attorney",
+            "legopedia",
+            "power_attorney_legopedia"
+        ],
+        "NACH/ECS/E-Mandate Transaction Return Memo": [
+            "nach",
+            "ecs",
+            "memo",
+            "return",
+            "memo",
+            "nach_ecs_memo_return_memo"
+        ],
+        "Mortgage asset documents": [
+            "mortgage",
+            "asset",
+            "property",
+            "document",
+            "mortgage_asset_document"
+        ],
+        "Copy of legal notice citing Event of Default with postal proof": [
+            "legal",
+            "notice",
+            "default",
+            "postal",
+            "legal_notice"
+        ],
+        "Statement of Account": [
+            "statement",
+            "account",
+            "statement_account",
+            "account_statement"
+        ],
+        "Arbitration seat as per the agreement": [
+            "arbitration",
+            "seat",
+            "agreement",
+            "arbitration_seat_agreement"
+        ]
+    },
+    "Execution Proceedings": {
+        "Soft copy of Arbitration Award with supporting data sheet": [
+            "arbitration",
+            "award",
+            "data",
+            "sheet",
+            "arbitration_award"
+        ],
+        "Petition draft incorporating Award details": [
+            "petition",
+            "draft",
+            "incorporating_award",
+            "petition_draft"
+        ],
+        "Mortgage asset documents (if applicable)": [
+            "mortgage",
+            "asset",
+            "mortgage_asset"
+        ],
+        "Proof from bank for freezing the respondentÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢s account": [
+            "bank",
+            "freezing",
+            "account",
+            "bank_freezing_account",
+            "bank_account"
+        ]
+    },
+    "Lok Adalat": {
+        "Updated account statements": [
+            "account",
+            "statement",
+            "account_Statements"
+        ],
+        "Claimed amount matching account statements": [
+            "claimed",
+            "amount",
+            "Claimed_Amount"
+        ],
+        "Authorization Letter on company letterhead (signed & sealed)": [
+            "authorization",
+            "letter",
+            "authorization_letter"
+        ],
+        "Copy of demand notice and proof of service": [
+            "demand",
+            "notice",
+            "service",
+            "demand_notice_service"
+        ],
+        "Loan Agreement": [
+            "loan",
+            "agreement",
+            "Loan_Agreement"
+        ],
+        "Proof of territorial/pecuniary jurisdiction": [
+            "territorial",
+            "jurisdiction",
+            "territorial_jurisdiction"
+        ],
+        "Last payment date": [
+            "payment",
+            "date"
+        ]
+    },
+    "Permanent Lok Adalat": {
+        "Authorization letter": [
+            "authorization",
+            "Authorization_letter"
+        ],
+        "Loan Agreement": [
+            "agreement",
+            "Loan_Agreement"
+        ],
+        "Statement of Accounts": [
+            "statement",
+            "account",
+            "Loan_Staements"
+        ]
+    },
+    "SARFAESI - Sec 14 Filings": {
+        "Copy of the Authorisation Letter": [
+            "authorization",
+            "letter",
+            "Authorization_letter"
+        ],
+        "Copy of the RBI Notification showcasing 100 Cr turnover": [
+            "rbi",
+            "notification",
+            "turnover",
+            "rbi_notification"
+        ],
+        "Copy of the Loan Application Form": [
+            "loan",
+            "application",
+            "form",
+            "loan_application"
+        ],
+        "Copy of the Sanction Letter": [
+            "sanction",
+            "letter",
+            "sanction_letter"
+        ],
+        "Copy of the Loan Agreement": [
+            "loan",
+            "agreement",
+            "loan_agreement"
+        ],
+        "Copy of the Memorandum of Deposit Title Deed": [
+            "deposit",
+            "title",
+            "deed",
+            "memorandum",
+            "memorandum_deposit"
+        ],
+        "Copy of the Absolute Sale Deed": [
+            "absolute",
+            "sale",
+            "deed",
+            "absolute_sale_deed"
+        ],
+        "Copy of the Statement of Account": [
+            "statement",
+            "account",
+            "statement_account"
+        ],
+        "Copy of the Sec 13 (2) notice along with the Postal Receipts": [
+            "section",
+            "13",
+            "notice",
+            "postal",
+            "section_13(2)_notice"
+        ],
+        "Copy of the Paper Publications U/s 13 (2) of SARFAESI": [
+            "paper",
+            "publication",
+            "13(2)",
+            "SARFAESI_Paper_Publications_13(2)"
+        ],
+        "Copy of the Sec 13 (4) notice along with the Postal Receipts": [
+            "section",
+            "13(4)",
+            "notice",
+            "Sec_13(4)_notice"
+        ],
+        "Copy of the Paper Publication U/s 13(4)": [
+            "paper",
+            "publication",
+            "13(4)",
+            "Paper_Publication_13(4)"
+        ],
+        "Copy of CERSAI Certificate": [
+            "cersai",
+            "certificate",
+            "CERSAI_Certificate"
+        ]
+    },
+    "Criminal": {
+        "FIR": [
+            "fir"
+        ]
+    }
+}
