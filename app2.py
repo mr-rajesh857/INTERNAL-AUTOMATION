@@ -57,11 +57,11 @@ if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 else:
     pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
-SCOPES = ['https://www.googleapis.com/auth/drive.file']
+# SCOPES = ['https://www.googleapis.com/auth/drive.file']
 # Defaults (will prefer current_app.config values at runtime)
 DEFAULT_UPLOAD_FOLDER = "uploads"
 DEFAULT_MERGED_FOLDER = "merged_pdfs"
-DEFAULT_DRIVE_FOLDER_ID = "1sNAPVzcRWvEQPasJcyfvu_psDAPdPDSL"  # your provided id as fallback
+DEFAULT_DRIVE_FOLDER_ID = "1f0Es9z4ZiZapZ8NldcC3mbuGOxukLUrk"  # your provided id as fallback
 DEFAULT_SERVICE_ACCOUNT_BASENAME = "service_account.json"
 
 # Ensure local folders exist (these are safe defaults)
@@ -239,12 +239,6 @@ def verify_text_simple(row, text):
     else:
         return "No Match"
 
-# (All OCR / table extraction / processing functions unchanged)
-# ... (I kept the rest of your helper and OCR functions exactly as you provided)
-# For brevity in this message I will not repeat every helper function verbatim again;
-# in your actual file keep all of the helper functions & OCR functions you already had.
-# The critical change is below inside `process_documents` where we DO NOT auto-send the verification email,
-# and rely on the frontend to call /send-email for both verification and merge.
 # ----------------------------
 # FAST PDF TEXT (PDFMiner first, PyPDF2 fallback)
 # ----------------------------
@@ -783,48 +777,58 @@ def process_single_verification(row, doc_col, link, use_easyocr=False):
 # ----------------------------
 def get_drive_service(service_account_file):
     if service_account is None or build is None:
-        raise RuntimeError("Google API libraries not installed. Run: pip install google-api-python-client google-auth")
+        raise RuntimeError("Google API libraries not installed.")
     if not os.path.exists(service_account_file):
         raise RuntimeError(f"Service account file not found at: {service_account_file}")
-    scopes = ["https://www.googleapis.com/auth/drive"]
-    creds = service_account.Credentials.from_service_account_file(service_account_file, scopes=scopes)
-    service = build("drive", "v3", credentials=creds, cache_discovery=False)
+
+    scopes = ["https://www.googleapis.com/auth/drive"]  # ✅ correct
+    creds = service_account.Credentials.from_service_account_file(
+        service_account_file,
+        scopes=scopes
+    )
+
+    service = build(
+        "drive",
+        "v3",
+        credentials=creds,
+        cache_discovery=False
+    )
     return service
 
 def upload_file_to_drive(local_path, folder_id, service_account_file):
-    """
-    Upload local_path to Drive folder_id using service account file. Return webViewLink or None.
-    """
     try:
         service = get_drive_service(service_account_file)
-    except Exception as e:
-        print("Drive service init failed:", e)
-        return None
-
-    filename = os.path.basename(local_path)
-    try:
+        filename = os.path.basename(local_path)
         media = MediaFileUpload(local_path, resumable=True)
-        file_metadata = {"name": filename, "parents": [folder_id]}
-        created = service.files().create(body=file_metadata, media_body=media, fields="id, webViewLink").execute()
-        file_id = created.get("id")
-        web_view = created.get("webViewLink")
-        # set permission to anyone
+
+        file_metadata = {
+            "name": filename,
+            "parents": [folder_id]
+        }
+
+        created = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, webViewLink",
+            supportsAllDrives=True   # ✅ REQUIRED
+        ).execute()
+
+        file_id = created["id"]
+
+        # Optional public read (Shared Drive safe)
         try:
-            service.permissions().create(fileId=file_id, body={"type": "anyone", "role": "reader"}, fields="id").execute()
+            service.permissions().create(
+                fileId=file_id,
+                body={"type": "anyone", "role": "reader"},
+                supportsAllDrives=True   # ✅ REQUIRED
+            ).execute()
         except Exception as e:
-            # may fail due to org settings — non-fatal
-            print("Warning: set permission failed:", e)
-        # try to ensure webViewLink
-        try:
-            info = service.files().get(fileId=file_id, fields="id, webViewLink").execute()
-            web_view = info.get("webViewLink") or web_view
-        except Exception:
-            pass
-        if not web_view and file_id:
-            web_view = f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
-        return web_view
+            print("Permission warning:", e)
+
+        return f"https://drive.google.com/file/d/{file_id}/view?usp=sharing"
+
     except Exception as e:
-        print("Drive upload error for", local_path, ":", e)
+        print("Drive upload error:", e)
         return None
 
 # ----------------------------
@@ -936,6 +940,7 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
     rows_merged = 0
 
     for idx, row in df.iterrows():
+        included_docs = []
         loan_id = row.get("Loan ID", "")
         name = row.get("Name", "")
         textual_print_log.append(f"\nProcessing row {idx+1}/{total_rows} — Loan ID: {loan_id} — Name: {name}")
