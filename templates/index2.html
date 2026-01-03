@@ -85,6 +85,22 @@
         .btn.cancel {
             background: #888;
         }
+        
+        /* Add styling for resume indicator */
+        .resume-indicator {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 5px;
+            padding: 12px;
+            margin: 10px 0;
+            color: #856404;
+            font-weight: 600;
+            display: none;
+        }
+        
+        .resume-indicator.show {
+            display: block;
+        }
     </style>
 
 </head>
@@ -99,6 +115,10 @@
             <input type="file" id="excelInput" accept=".xlsx">
             <button id="uploadBtn">Upload & Detect Columns</button>
             <p id="uploadMsg" class="muted"></p>
+            <!-- Add resume indicator -->
+            <div id="resumeIndicator" class="resume-indicator">
+                🔄 Previous session found! Processing will resume from where it stopped.
+            </div>
         </section>
 
         <!-- ========== STEP 2: SELECT VERIFY/MERGE COLUMNS ========== -->
