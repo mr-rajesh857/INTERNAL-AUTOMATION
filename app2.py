@@ -28,6 +28,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.auth.transport.requests import Request
 from playwright.sync_api import sync_playwright
+import json
 # Google Drive API libs (optional)
 try:
     from google.oauth2 import service_account
@@ -89,6 +90,61 @@ EASYOCR_GPU_IF_AVAILABLE = True
 DEFAULT_DPI = 180
 EARLY_EXIT_KEYWORDS = ["loan", "loan id", "loan_id", "loanid", "mobile", "phone", "aadhaar", "pan", "id", "name"]
 PLAYWRIGHT_LOCK = threading.Lock()
+
+# ----------- State Management Functions -----------
+def get_state_file_path(excel_path):
+    """Generate hidden state file path based on excel filename"""
+    base_dir = os.path.dirname(excel_path) or "."
+    excel_filename = os.path.basename(excel_path)
+    state_filename = f".state_{excel_filename}.json"
+    return os.path.join(base_dir, state_filename)
+
+def load_state(excel_path):
+    """Load processing state from file if it exists"""
+    state_path = get_state_file_path(excel_path)
+    if not os.path.exists(state_path):
+        return None
+    try:
+        with open(state_path, 'r', encoding='utf-8') as f:
+            state = json.load(f)
+            print(f"📂 Loaded state from {state_path}")
+            return state
+    except Exception as e:
+        print(f"Failed to load state file: {e}")
+        return None
+
+def save_state(excel_path, last_index, ver_log_rows, merge_log_rows, print_log, summary_stats):
+    """Save current processing state to file"""
+    state_path = get_state_file_path(excel_path)
+    state_data = {
+        'last_processed_index': last_index,
+        'verification_log_rows': ver_log_rows,
+        'merge_log_rows': merge_log_rows,
+        'textual_print_log': print_log,
+        'summary_stats': summary_stats,
+        'timestamp': datetime.now().isoformat()
+    }
+    try:
+        with open(state_path, 'w', encoding='utf-8') as f:
+            json.dump(state_data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Failed to save state file: {e}")
+
+def delete_state(excel_path):
+    """Delete state file after successful completion"""
+    state_path = get_state_file_path(excel_path)
+    if os.path.exists(state_path):
+        try:
+            os.remove(state_path)
+            print(f"🗑️ Deleted state file: {state_path}")
+        except Exception as e:
+            print(f"Failed to delete state file: {e}")
+
+def check_has_state(excel_path):
+    """Check if a state file exists for the given excel file"""
+    state_path = get_state_file_path(excel_path)
+    return os.path.exists(state_path)
+
 # ----------- Helpers -----------
 def download_pdf_via_playwright(url, timeout=30000):
     try:
@@ -213,8 +269,6 @@ def download_file_from_link(link):
     # 3️⃣ Playwright fallback (Legodesk etc.)
     print("⚙ Using Playwright for:", link)
     return download_pdf_via_playwright(link)
-
-
 
 
 def is_pdf_bytes(b: bytes):
@@ -874,9 +928,7 @@ def send_email_with_attachment(sender_email, sender_password, to_email, cc_email
         print("❌ Email sending failed:", e)
         return False
 
-# ----------------------------
-# Main processing wrapper (uses current_app.config for folders and drive settings)
-# ----------------------------
+
 def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
                       ver_to=None, ver_cc=None, ver_subject=None,
                       merge_to=None, merge_cc=None, merge_subject=None):
@@ -903,9 +955,32 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
         os.makedirs(upload_folder, exist_ok=True)
         os.makedirs(merged_folder, exist_ok=True)
 
-    verification_log_rows = []
-    merge_log_rows = []
-    textual_print_log = []
+    existing_state = load_state(excel_path)
+    
+    if existing_state:
+        verification_log_rows = existing_state.get('verification_log_rows', [])
+        merge_log_rows = existing_state.get('merge_log_rows', [])
+        textual_print_log = existing_state.get('textual_print_log', [])
+        start_index = existing_state.get('last_processed_index', -1) + 1
+        summary_stats = existing_state.get('summary_stats', {
+            'rows_skipped_missing': 0,
+            'rows_failed_verification': 0,
+            'rows_merged': 0
+        })
+        rows_skipped_missing = summary_stats.get('rows_skipped_missing', 0)
+        rows_failed_verification = summary_stats.get('rows_failed_verification', 0)
+        rows_merged = summary_stats.get('rows_merged', 0)
+        textual_print_log.append(f"\n{'='*60}")
+        textual_print_log.append(f"🔄 RESUMING FROM ROW {start_index + 1}")
+        textual_print_log.append(f"{'='*60}\n")
+    else:
+        verification_log_rows = []
+        merge_log_rows = []
+        textual_print_log = []
+        start_index = 0
+        rows_skipped_missing = 0
+        rows_failed_verification = 0
+        rows_merged = 0
 
     try:
         df = pd.read_excel(excel_path)
@@ -935,11 +1010,12 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
             pass
 
     total_rows = len(df)
-    rows_skipped_missing = 0
-    rows_failed_verification = 0
-    rows_merged = 0
 
     for idx, row in df.iterrows():
+        # Skip already processed rows
+        if idx < start_index:
+            continue
+            
         included_docs = []
         loan_id = row.get("Loan ID", "")
         name = row.get("Name", "")
@@ -980,6 +1056,11 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
                 "Drive Link": "",
                 "Reason": "Missing document(s)",
                 "Time Taken (s)": 0
+            })
+            save_state(excel_path, idx, verification_log_rows, merge_log_rows, textual_print_log, {
+                'rows_skipped_missing': rows_skipped_missing,
+                'rows_failed_verification': rows_failed_verification,
+                'rows_merged': rows_merged
             })
             continue
 
@@ -1046,6 +1127,11 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
                 "Drive Link": "",
                 "Reason": "Verification failed for one or more selected documents",
                 "Time Taken (s)": 0
+            })
+            save_state(excel_path, idx, verification_log_rows, merge_log_rows, textual_print_log, {
+                'rows_skipped_missing': rows_skipped_missing,
+                'rows_failed_verification': rows_failed_verification,
+                'rows_merged': rows_merged
             })
             continue
 
@@ -1140,6 +1226,17 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
                 "Reason": "Merge append/download error",
                 "Time Taken (s)": 0
             })
+        
+        save_state(excel_path, idx, verification_log_rows, merge_log_rows, textual_print_log, {
+            'rows_skipped_missing': rows_skipped_missing,
+            'rows_failed_verification': rows_failed_verification,
+            'rows_merged': rows_merged
+        })
+
+    delete_state(excel_path)
+    textual_print_log.append(f"\n{'='*60}")
+    textual_print_log.append("✅ ALL ROWS PROCESSED SUCCESSFULLY")
+    textual_print_log.append(f"{'='*60}\n")
 
     # Save logs
     timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -1161,11 +1258,13 @@ def process_documents(excel_path, ver_docs, merge_seq_docs, use_easyocr=False,
         merge_log_path = None
 
     summary = {
-        "Total rows": total_rows,
-        "Rows skipped (missing docs)": rows_skipped_missing,
-        "Rows failed verification": rows_failed_verification,
-        "Rows merged": rows_merged,
-        "Merged PDFs location": os.path.abspath(merged_folder)
+        "Total Rows": total_rows,
+        "Rows Skipped (Missing)": rows_skipped_missing,
+        "Rows Failed Verification": rows_failed_verification,
+        "Rows Successfully Merged": rows_merged,
+        "Verification Log": verification_log_path,
+        "Merge Log": merge_log_path,
+        "Merged PDFs location": merged_folder
     }
 
     return {
@@ -1205,7 +1304,12 @@ def upload():
             return jsonify({"error": "No 'Folder Link' column found in Excel."}), 400
         idx = cols.index("Folder Link") + 1
         doc_columns = cols[idx:]
-        return jsonify({"excel_path": save_path, "document_columns": doc_columns})
+        has_resume_state = check_has_state(save_path)
+        return jsonify({
+            "excel_path": save_path, 
+            "document_columns": doc_columns,
+            "has_resume_state": has_resume_state
+        })
     except Exception as e:
         return jsonify({"error": f"Failed to read excel: {e}"}), 500
 
