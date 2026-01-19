@@ -236,6 +236,41 @@ function startFolderScan() {
     showToast("Started live folder scan. Results will appear below...");
 }
 
+// function appendScanRow(payload) {
+//     const container = document.getElementById("scan_results");
+//     const row = document.createElement("div");
+//     row.className = "scan-row";
+
+//     const borrowerDiv = document.createElement("div");
+//     borrowerDiv.className = "borrower";
+//     borrowerDiv.textContent = payload.borrower || "(blank)";
+
+//     const statusDiv = document.createElement("div");
+//     statusDiv.className = "status " + (payload.status === "found" ? "found" : (payload.status === "not_found" ? "not_found" : ""));
+//     statusDiv.textContent = payload.status === "found" ? "Found" : (payload.status === "not_found" ? "Not Found" : payload.status);
+
+//     row.appendChild(borrowerDiv);
+//     row.appendChild(statusDiv);
+
+//     if (payload.status === "found" && payload.folder_id) {
+//         const linkDiv = document.createElement("div");
+//         linkDiv.style.flex = "1";
+//         linkDiv.innerHTML = `<div style="margin-bottom:6px;"><a href="https://drive.google.com/drive/folders/${payload.folder_id}" target="_blank">Open Folder</a> &nbsp; <span class='copy' style='cursor:pointer;' onclick='copyText("https://drive.google.com/drive/folders/${payload.folder_id}")'>📋</span></div>`;
+//         const structHtml = generateTree(payload.structure || []);
+//         const wrapper = document.createElement("div");
+//         wrapper.innerHTML = structHtml;
+//         linkDiv.appendChild(wrapper);
+//         row.appendChild(linkDiv);
+//     } else {
+//         const spacer = document.createElement("div");
+//         spacer.style.flex = "1";
+//         row.appendChild(spacer);
+//     }
+
+//     container.appendChild(row);
+// }
+
+
 function appendScanRow(payload) {
     const container = document.getElementById("scan_results");
     const row = document.createElement("div");
@@ -247,21 +282,111 @@ function appendScanRow(payload) {
 
     const statusDiv = document.createElement("div");
     statusDiv.className = "status " + (payload.status === "found" ? "found" : (payload.status === "not_found" ? "not_found" : ""));
-    statusDiv.textContent = payload.status === "found" ? "Found" : (payload.status === "not_found" ? "Not Found" : payload.status);
+    
+    // ✅ NEW: Show folder count
+    const folderCount = payload.folder_count || 0;
+    const statusText = payload.status === "found" 
+        ? `Found (${folderCount} folder${folderCount !== 1 ? 's' : ''})` 
+        : (payload.status === "not_found" ? "Not Found" : payload.status);
+    statusDiv.textContent = statusText;
 
     row.appendChild(borrowerDiv);
     row.appendChild(statusDiv);
 
-    if (payload.status === "found" && payload.folder_id) {
+    // ✅ NEW: Handle multiple folders (folders array)
+    if (payload.status === "found" && payload.folders && payload.folders.length > 0) {
         const linkDiv = document.createElement("div");
         linkDiv.style.flex = "1";
-        linkDiv.innerHTML = `<div style="margin-bottom:6px;"><a href="https://drive.google.com/drive/folders/${payload.folder_id}" target="_blank">Open Folder</a> &nbsp; <span class='copy' style='cursor:pointer;' onclick='copyText("https://drive.google.com/drive/folders/${payload.folder_id}")'>📋</span></div>`;
-        const structHtml = generateTree(payload.structure || []);
-        const wrapper = document.createElement("div");
-        wrapper.innerHTML = structHtml;
-        linkDiv.appendChild(wrapper);
+        
+        // Display each folder with its structure
+        payload.folders.forEach((folderInfo, idx) => {
+            const folderId = folderInfo.folder_id;
+            const folderName = folderInfo.folder_name || `Folder ${idx + 1}`;
+            const structure = folderInfo.structure || [];
+            const hasError = folderInfo.error;
+            
+            // Create container for this folder
+            const folderContainer = document.createElement("div");
+            folderContainer.style.marginBottom = "15px";
+            
+            // Add separator line between folders (except first)
+            if (idx > 0) {
+                folderContainer.style.borderTop = "1px solid #444";
+                folderContainer.style.paddingTop = "15px";
+            }
+            
+            // Folder header with name and link
+            const folderHeader = document.createElement("div");
+            folderHeader.style.marginBottom = "8px";
+            folderHeader.style.fontWeight = "bold";
+            
+            if (hasError) {
+                folderHeader.innerHTML = `
+                    <div style="color:#e74c3c;">
+                        📁 <strong>${escapeHtml(folderName)}</strong>
+                        <span style="font-weight:normal; font-size:0.9em;"> - Error: ${escapeHtml(folderInfo.error)}</span>
+                    </div>
+                `;
+            } else {
+                folderHeader.innerHTML = `
+                    <div>
+                        📁 <strong>${escapeHtml(folderName)}</strong>
+                        <a href="https://drive.google.com/drive/folders/${folderId}" target="_blank" style="margin-left:10px;">Open Folder</a>
+                        <span class='copy' style='cursor:pointer; margin-left:5px;' onclick='copyText("https://drive.google.com/drive/folders/${folderId}")' title='Copy folder link'>📋</span>
+                    </div>
+                `;
+            }
+            
+            folderContainer.appendChild(folderHeader);
+            
+            // Add folder structure tree (if available)
+            if (!hasError && structure && structure.length > 0) {
+                const structHtml = generateTree(structure);
+                const treeWrapper = document.createElement("div");
+                treeWrapper.style.marginLeft = "20px";
+                treeWrapper.innerHTML = structHtml;
+                folderContainer.appendChild(treeWrapper);
+            } else if (!hasError && (!structure || structure.length === 0)) {
+                const emptyMsg = document.createElement("div");
+                emptyMsg.style.marginLeft = "20px";
+                emptyMsg.style.color = "#888";
+                emptyMsg.style.fontStyle = "italic";
+                emptyMsg.textContent = "Empty folder";
+                folderContainer.appendChild(emptyMsg);
+            }
+            
+            linkDiv.appendChild(folderContainer);
+        });
+        
         row.appendChild(linkDiv);
-    } else {
+    } 
+    // ✅ FALLBACK: Handle old single-folder format (backward compatibility)
+    else if (payload.status === "found" && payload.folder_id) {
+        const linkDiv = document.createElement("div");
+        linkDiv.style.flex = "1";
+        
+        const folderHeader = document.createElement("div");
+        folderHeader.style.marginBottom = "8px";
+        folderHeader.innerHTML = `
+            <div>
+                📁 <a href="https://drive.google.com/drive/folders/${payload.folder_id}" target="_blank">Open Folder</a>
+                <span class='copy' style='cursor:pointer; margin-left:5px;' onclick='copyText("https://drive.google.com/drive/folders/${payload.folder_id}")'>📋</span>
+            </div>
+        `;
+        linkDiv.appendChild(folderHeader);
+        
+        if (payload.structure && payload.structure.length > 0) {
+            const structHtml = generateTree(payload.structure);
+            const treeWrapper = document.createElement("div");
+            treeWrapper.style.marginLeft = "20px";
+            treeWrapper.innerHTML = structHtml;
+            linkDiv.appendChild(treeWrapper);
+        }
+        
+        row.appendChild(linkDiv);
+    }
+    // ✅ Not found - add spacer
+    else {
         const spacer = document.createElement("div");
         spacer.style.flex = "1";
         row.appendChild(spacer);
@@ -271,6 +396,9 @@ function appendScanRow(payload) {
 }
 
 // prepareDocsThenRun (from previous)
+
+
+
 async function prepareDocsThenRun() {
     document.getElementById("section3").style.display = "block";
     const caseTypeSelect = document.getElementById("case_type");
